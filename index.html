@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camlist Pro - Cloud Sync</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // Cấu hình Firebase của Tuấn
+        const firebaseConfig = {
+          apiKey: "AIzaSyDILLGyUFKccohMGrbYBGYnrC3Vnos9Cjo",
+          authDomain: "camlist-ba10d.firebaseapp.com",
+          databaseURL: "https://camlist-ba10d-default-rtdb.firebaseio.com", 
+          projectId: "camlist-ba10d",
+          storageBucket: "camlist-ba10d.firebasestorage.app",
+          messagingSenderId: "164422011695",
+          appId: "1:164422011695:web:8141a557ebf74f20986fda",
+          measurementId: "G-WHM9SND0PC"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        window.db = db; window.dbRef = ref; window.dbSet = set; window.dbOnValue = onValue; window.dbUpdate = update; window.dbRemove = remove;
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .item-checked { text-decoration: line-through; color: #cbd5e1; background-color: #f8fafc !important; }
+        .modal-animate { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const CATEGORIES = [
+            "Body", "Lens", "Pin máy & V-mount", "Monitor Đạo diễn", "Monitor Record",
+            "Wireless Transmitter", "Wireless Focus", "Thẻ & Ổ cứng", "Rig & Phụ kiện",
+            "Chân máy", "Các phụ kiện đặc biệt khác"
+        ];
+
+        function App() {
+            const [projects, setProjects] = useState([]);
+            const [currentProject, setCurrentProject] = useState(null);
+            const [loading, setLoading] = useState(true);
+            
+            const [projectModal, setProjectModal] = useState({ show: false, editId: null });
+            const [itemModal, setItemModal] = useState({ show: false, category: null, editId: null });
+            const [projectName, setProjectName] = useState('');
+            const [projectDate, setProjectDate] = useState('');
+            const [itemName, setItemName] = useState('');
+            const [itemQty, setItemQty] = useState('1');
+
+            useEffect(() => {
+                if (!window.db) return;
+                const dbRef = window.dbRef(window.db, 'projects');
+                window.dbOnValue(dbRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+                        setProjects(list.reverse());
+                        if (currentProject) {
+                            const updated = list.find(p => p.id === currentProject.id);
+                            if (updated) setCurrentProject(updated);
+                        }
+                    } else { setProjects([]); }
+                    setLoading(false);
+                });
+            }, [window.db]);
+
+            const saveToCloud = (id, data) => window.dbSet(window.dbRef(window.db, 'projects/' + id), data);
+
+            const handleSaveProject = () => {
+                if (!projectName) return;
+                const id = projectModal.editId || Date.now().toString();
+                const data = projectModal.editId 
+                    ? { ...projects.find(p => p.id === id), name: projectName, date: projectDate }
+                    : { name: projectName, date: projectDate, items: CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {}) };
+                saveToCloud(id, data);
+                setProjectModal({ show: false, editId: null });
+            };
+
+            const deleteProject = (id, e) => {
+                e.stopPropagation();
+                if (confirm("Xoá dự án này trên Cloud?")) window.dbRemove(window.dbRef(window.db, 'projects/' + id));
+            };
+
+            const handleSaveItem = () => {
+                if (!itemName) return;
+                const p = { ...currentProject };
+                if (!p.items[itemModal.category] || typeof p.items[itemModal.category] === 'string') p.items[itemModal.category] = [];
+                
+                if (itemModal.editId) {
+                    p.items[itemModal.category] = p.items[itemModal.category].map(i => i.id === itemModal.editId ? { ...i, name: itemName, qty: itemQty } : i);
+                } else {
+                    p.items[itemModal.category].push({ id: Date.now().toString(), name: itemName, qty: itemQty, checked: false });
+                }
+                saveToCloud(p.id, p);
+                setItemModal({ show: false, category: null, editId: null });
+            };
+
+            const toggleItem = (cat, itemId) => {
+                const p = { ...currentProject };
+                p.items[cat] = p.items[cat].map(i => i.id === itemId ? { ...i, checked: !i.checked } : i);
+                saveToCloud(p.id, p);
+            };
+
+            const deleteItem = (cat, itemId) => {
+                const p = { ...currentProject };
+                p.items[cat] = p.items[cat].filter(i => i.id !== itemId);
+                saveToCloud(p.id, p);
+            };
+
+            if (loading) return <div className="flex h-screen items-center justify-center font-black text-orange-500 animate-pulse">CONNECTING TO CLOUD...</div>;
+
+            return (
+                <div className="min-h-screen flex flex-col pb-20">
+                    <header className="bg-slate-900 text-white p-4 md:p-6 shadow-xl sticky top-0 z-30">
+                        <div className="max-w-6xl mx-auto flex justify-between items-center">
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentProject(null)}>
+                                <div className="bg-orange-500 p-2 rounded-lg"><i className="fas fa-sync-alt animate-spin-slow"></i></div>
+                                <h1 className="text-xl font-black tracking-tighter uppercase">Camlist Cloud</h1>
+                            </div>
+                            {!currentProject && (
+                                <button onClick={() => { setProjectName(''); setProjectDate(''); setProjectModal({show:true, editId:null})}} className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-xl text-xs font-black transition-all">
+                                    + PROJECT
+                                </button>
+                            )}
+                        </div>
+                    </header>
+
+                    <main className="max-w-6xl w-full mx-auto p-4 md:p-6">
+                        {!currentProject ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {projects.map(p => (
+                                    <div key={p.id} className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden cursor-pointer group hover:shadow-xl transition-all" onClick={() => setCurrentProject(p)}>
+                                        <div className="p-6">
+                                            <div className="flex justify-between items-start mb-6 tex
