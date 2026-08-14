@@ -2,41 +2,38 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camlist Pro - Cloud Sync</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chintu Studio - Checklist Pro</title>
+    
+    <!-- FAVICON: Logo chữ C của Tuấn -->
+    <link rel="icon" type="image/png" href="https://files.catbox.moe/o3d8d5.png">
+
+    <!-- Thư viện -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        // Cấu hình Firebase của Tuấn
-        const firebaseConfig = {
-          apiKey: "AIzaSyDILLGyUFKccohMGrbYBGYnrC3Vnos9Cjo",
-          authDomain: "camlist-ba10d.firebaseapp.com",
-          databaseURL: "https://camlist-ba10d-default-rtdb.firebaseio.com", 
-          projectId: "camlist-ba10d",
-          storageBucket: "camlist-ba10d.firebasestorage.app",
-          messagingSenderId: "164422011695",
-          appId: "1:164422011695:web:8141a557ebf74f20986fda",
-          measurementId: "G-WHM9SND0PC"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        window.db = db; window.dbRef = ref; window.dbSet = set; window.dbOnValue = onValue; window.dbUpdate = update; window.dbRemove = remove;
-    </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-        .item-checked { text-decoration: line-through; color: #cbd5e1; background-color: #f8fafc !important; }
-        .modal-animate { animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+        body { font-family: 'Outfit', sans-serif; background-color: #f1f5f9; margin: 0; color: #1e293b; overflow-x: hidden; }
+        .status-btn { width: 44px; height: 44px; border-radius: 12px; border: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-weight: 800; background: white; color: #cbd5e1; font-size: 13px; transition: 0.2s; }
+        .active-1 { background: #3b82f6 !important; border-color: #3b82f6 !important; color: white !important; }
+        .active-2 { background: #8b5cf6 !important; border-color: #8b5cf6 !important; color: white !important; }
+        .active-3 { background: #f59e0b !important; border-color: #f59e0b !important; color: white !important; }
+        .active-4 { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; }
+        .sticky-col { position: sticky; left: 0; background: white; z-index: 10; min-width: 140px; border-right: 2px solid #f1f5f9; }
+        .delete-btn { color: #cbd5e1; transition: 0.3s; padding: 10px; cursor: pointer; }
+        .delete-btn:hover { color: #ef4444; transform: scale(1.2); }
+        .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .scroll-custom::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scroll-custom::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .studio-header { background: white; padding: 30px 20px; text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 30px; }
+        .full-logo { max-height: 60px; margin: 0 auto; display: block; }
     </style>
 </head>
 <body>
@@ -45,106 +42,241 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        const CATEGORIES = [
-            "Body", "Lens", "Pin máy & V-mount", "Monitor Đạo diễn", "Monitor Record",
-            "Wireless Transmitter", "Wireless Focus", "Thẻ & Ổ cứng", "Rig & Phụ kiện",
-            "Chân máy", "Các phụ kiện đặc biệt khác"
-        ];
+        // LOGO ĐẦY ĐỦ CỦA TUẤN
+        const FULL_LOGO = "https://files.catbox.moe/k3i4d1.png";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDILLGyUFKccohMGrbYBGYnrC3Vnos9Cjo",
+            authDomain: "camlist-ba10d.firebaseapp.com",
+            databaseURL: "https://camlist-ba10d-default-rtdb.firebaseio.com", 
+            projectId: "camlist-ba10d",
+            storageBucket: "camlist-ba10d.firebasestorage.app",
+            messagingSenderId: "164422011695",
+            appId: "1:164422011695:web:8141a557ebf74f20986fda"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
         function App() {
+            const [view, setView] = useState('projects');
             const [projects, setProjects] = useState([]);
+            const [inventory, setInventory] = useState({});
             const [currentProject, setCurrentProject] = useState(null);
+            const [showAddModal, setShowAddModal] = useState(false);
             const [loading, setLoading] = useState(true);
-            
-            const [projectModal, setProjectModal] = useState({ show: false, editId: null });
-            const [itemModal, setItemModal] = useState({ show: false, category: null, editId: null });
-            const [projectName, setProjectName] = useState('');
-            const [projectDate, setProjectDate] = useState('');
-            const [itemName, setItemName] = useState('');
-            const [itemQty, setItemQty] = useState('1');
+            const [selectedCaseIds, setSelectedCaseIds] = useState([]);
 
             useEffect(() => {
-                if (!window.db) return;
-                const dbRef = window.dbRef(window.db, 'projects');
-                window.dbOnValue(dbRef, (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-                        setProjects(list.reverse());
-                        if (currentProject) {
-                            const updated = list.find(p => p.id === currentProject.id);
-                            if (updated) setCurrentProject(updated);
-                        }
-                    } else { setProjects([]); }
+                db.ref('studio_inventory').on('value', s => setInventory(s.val() || {}));
+                const pRef = db.ref('studio_projects');
+                pRef.on('value', s => {
+                    const data = s.val() || {};
+                    const list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+                    setProjects(list.reverse());
+                    if (currentProject) {
+                        const updated = list.find(p => p.id === currentProject.id);
+                        if (updated) setCurrentProject(updated);
+                    }
                     setLoading(false);
                 });
-            }, [window.db]);
+                return () => pRef.off();
+            }, [currentProject?.id]);
 
-            const saveToCloud = (id, data) => window.dbSet(window.dbRef(window.db, 'projects/' + id), data);
-
-            const handleSaveProject = () => {
-                if (!projectName) return;
-                const id = projectModal.editId || Date.now().toString();
-                const data = projectModal.editId 
-                    ? { ...projects.find(p => p.id === id), name: projectName, date: projectDate }
-                    : { name: projectName, date: projectDate, items: CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {}) };
-                saveToCloud(id, data);
-                setProjectModal({ show: false, editId: null });
-            };
-
-            const deleteProject = (id, e) => {
+            const handleDelete = (id, e) => {
                 e.stopPropagation();
-                if (confirm("Xoá dự án này trên Cloud?")) window.dbRemove(window.dbRef(window.db, 'projects/' + id));
-            };
-
-            const handleSaveItem = () => {
-                if (!itemName) return;
-                const p = { ...currentProject };
-                if (!p.items[itemModal.category] || typeof p.items[itemModal.category] === 'string') p.items[itemModal.category] = [];
-                
-                if (itemModal.editId) {
-                    p.items[itemModal.category] = p.items[itemModal.category].map(i => i.id === itemModal.editId ? { ...i, name: itemName, qty: itemQty } : i);
-                } else {
-                    p.items[itemModal.category].push({ id: Date.now().toString(), name: itemName, qty: itemQty, checked: false });
+                if (window.confirm("Xoá dự án này vĩnh viễn?")) {
+                    const paths = ['projects', 'projects_v2', 'projects_v3', 'studio_projects'];
+                    paths.forEach(path => db.ref(path).child(id).remove());
                 }
-                saveToCloud(p.id, p);
-                setItemModal({ show: false, category: null, editId: null });
             };
 
-            const toggleItem = (cat, itemId) => {
-                const p = { ...currentProject };
-                p.items[cat] = p.items[cat].map(i => i.id === itemId ? { ...i, checked: !i.checked } : i);
-                saveToCloud(p.id, p);
+            const handleCreateProject = () => {
+                const name = document.getElementById('pname')?.value;
+                const date = document.getElementById('pdate')?.value;
+                if(!name || !date) return alert("Nhập đủ thông tin!");
+                if(selectedCaseIds.length === 0) return alert("Chọn ít nhất 1 thùng đồ!");
+
+                const finalCases = {};
+                selectedCaseIds.forEach(id => { if (inventory[id]) finalCases[id] = inventory[id]; });
+
+                const id = Date.now().toString();
+                db.ref('studio_projects').child(id).set({ id, name, date, cases: finalCases })
+                .then(() => { setShowAddModal(false); setSelectedCaseIds([]); });
             };
 
-            const deleteItem = (cat, itemId) => {
-                const p = { ...currentProject };
-                p.items[cat] = p.items[cat].filter(i => i.id !== itemId);
-                saveToCloud(p.id, p);
+            const toggleCheck = (caseId, itemId, col) => {
+                if(!currentProject) return;
+                const cur = currentProject.cases[caseId].items[itemId][`c${col}`] || false;
+                db.ref(`studio_projects/${currentProject.id}/cases/${caseId}/items/${itemId}/c${col}`).set(!cur);
             };
 
-            if (loading) return <div className="flex h-screen items-center justify-center font-black text-orange-500 animate-pulse">CONNECTING TO CLOUD...</div>;
+            if (loading && projects.length === 0 && view === 'projects') return <div className="h-screen flex items-center justify-center font-black text-red-600 animate-pulse uppercase tracking-[0.3em]">Chintu Studio...</div>;
 
             return (
-                <div className="min-h-screen flex flex-col pb-20">
-                    <header className="bg-slate-900 text-white p-4 md:p-6 shadow-xl sticky top-0 z-30">
-                        <div className="max-w-6xl mx-auto flex justify-between items-center">
-                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentProject(null)}>
-                                <div className="bg-orange-500 p-2 rounded-lg"><i className="fas fa-sync-alt animate-spin-slow"></i></div>
-                                <h1 className="text-xl font-black tracking-tighter uppercase">Camlist Cloud</h1>
-                            </div>
-                            {!currentProject && (
-                                <button onClick={() => { setProjectName(''); setProjectDate(''); setProjectModal({show:true, editId:null})}} className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-xl text-xs font-black transition-all">
-                                    + PROJECT
-                                </button>
-                            )}
-                        </div>
+                <div className="min-h-screen pb-20">
+                    <header className="studio-header">
+                        <img src={FULL_LOGO} alt="Chintu Film Factory" className="full-logo" />
                     </header>
 
-                    <main className="max-w-6xl w-full mx-auto p-4 md:p-6">
-                        {!currentProject ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {projects.map(p => (
-                                    <div key={p.id} className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden cursor-pointer group hover:shadow-xl transition-all" onClick={() => setCurrentProject(p)}>
-                                        <div className="p-6">
-                                            <div className="flex justify-between items-start mb-6 tex
+                    <div className="max-w-6xl mx-auto p-4 md:p-8">
+                        {/* NAV MENU */}
+                        <div className="flex gap-2 mb-12 bg-white p-2 rounded-3xl shadow-sm border border-slate-200 sticky top-4 z-[60]">
+                            <button onClick={() => {setView('projects'); setCurrentProject(null)}} className={`flex-1 py-4 rounded-2xl font-bold text-sm transition-all ${view === 'projects' ? 'bg-red-600 text-white shadow-xl' : 'text-slate-400'}`}>DỰ ÁN</button>
+                            <button onClick={() => {setView('inventory'); setCurrentProject(null)}} className={`flex-1 py-4 rounded-2xl font-bold text-sm transition-all ${view === 'inventory' ? 'bg-red-600 text-white shadow-xl' : 'text-slate-400'}`}>KHO MẪU</button>
+                        </div>
+
+                        {view === 'inventory' && (
+                            <div className="animate-pop text-slate-800 italic">
+                                <div className="flex justify-between items-center mb-6 px-2">
+                                    <h2 className="text-2xl font-black uppercase tracking-tighter underline decoration-red-600 decoration-4 underline-offset-4">Inventory Master</h2>
+                                    <button onClick={() => {const n=prompt("Tên thùng:"); if(n) db.ref('studio_inventory').push({name:n})}} className="bg-slate-900 text-white px-5 py-2 rounded-2xl font-bold text-[10px] shadow-lg">+ THÊM THÙNG</button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {Object.keys(inventory).map(id => (
+                                        <div key={id} className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm relative group">
+                                            <div className="flex justify-between items-center mb-6 border-b pb-4">
+                                                <h3 className="font-black uppercase text-sm text-slate-700 tracking-widest">{inventory[id].name}</h3>
+                                                <div className="flex gap-2 text-slate-800">
+                                                    <button onClick={() => {
+                                                        const name = prompt("Tên thiết bị:"); if(!name) return;
+                                                        const input = document.createElement('input'); input.type='file'; input.accept='image/*';
+                                                        input.onchange = (e) => {
+                                                            const file = e.target.files[0];
+                                                            const r = new FileReader(); r.readAsDataURL(file);
+                                                            r.onload = (ev) => {
+                                                                const img = new Image(); img.src = ev.target.result;
+                                                                img.onload = () => {
+                                                                    const canvas = document.createElement('canvas');
+                                                                    const scale = 300 / img.width; canvas.width = 300; canvas.height = img.height * scale;
+                                                                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                                    db.ref(`studio_inventory/${id}/items`).push({ name, img: canvas.toDataURL('image/jpeg', 0.7) });
+                                                                };
+                                                            };
+                                                        }; input.click();
+                                                    }} className="bg-red-600 text-white px-3 py-1.5 rounded-xl font-bold text-[10px] uppercase tracking-wider">+ Đồ</button>
+                                                    <button onClick={() => confirm("Xoá thùng?") && db.ref(`studio_inventory/${id}`).remove()} className="text-slate-200 hover:text-red-500"><i className="fas fa-trash-alt text-sm"></i></button>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                {inventory[id].items && Object.keys(inventory[id].items).map(itemId => (
+                                                    <div key={itemId} className="text-center relative group">
+                                                        <img src={inventory[id].items[itemId].img} className="aspect-square rounded-2xl border-2 border-slate-50 object-cover shadow-sm mb-1" />
+                                                        <p className="text-[9px] font-black text-slate-500 uppercase truncate px-1 tracking-tighter">{inventory[id].items[itemId].name}</p>
+                                                        <button onClick={() => db.ref(`studio_inventory/${id}/items/${itemId}`).remove()} className="absolute -top-1 -right-1 bg-red-500 text-white w-5 h-5 rounded-full text-[8px] opacity-0 group-hover:opacity-100 transition-all shadow-md"><i className="fas fa-times"></i></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'projects' && !currentProject && (
+                            <div className="animate-pop text-slate-800 italic">
+                                <div className="flex justify-between items-center mb-6 px-2 uppercase font-black tracking-tighter">
+                                    <h2 className="text-2xl underline decoration-red-600 decoration-4 underline-offset-4">Shooting List</h2>
+                                    <button onClick={() => setShowAddModal(true)} className="bg-red-600 text-white px-6 py-3 rounded-2xl font-bold text-[10px] shadow-lg shadow-red-600/30 uppercase tracking-widest">+ NEW PROJECT</button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {projects.map(p => (
+                                        <div key={p.id} onClick={() => setCurrentProject(p)} className="bg-white p-6 rounded-[2.5rem] border border-slate-200 hover:shadow-2xl transition-all cursor-pointer relative group overflow-hidden">
+                                            <div className="bg-red-50 p-4 rounded-2xl text-red-600 w-fit mb-4 group-hover:bg-red-600 group-hover:text-white transition-all"><i className="fas fa-film text-xl"></i></div>
+                                            <h3 className="text-xl font-black uppercase leading-tight mb-2 group-hover:text-red-600 transition-colors">{p.name}</h3>
+                                            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 italic"><i className="fas fa-calendar-alt"></i> {p.date}</p>
+                                            <button onClick={(e) => handleDelete(p.id, e)} className="delete-btn"><i className="fas fa-trash-alt text-lg"></i></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {currentProject && (
+                            <div className="animate-pop text-slate-800 italic">
+                                <button onClick={() => setCurrentProject(null)} className="text-red-600 font-black text-xs mb-6 uppercase flex items-center gap-2 tracking-widest"> <i className="fas fa-chevron-left"></i> BACK TO LIST</button>
+                                <h2 className="text-4xl md:text-6xl font-black text-slate-900 uppercase tracking-tighter mb-10 leading-none">{currentProject.name}</h2>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-10">
+                                    {["Out", "On Set", "Off Set", "Home"].map((t, i) => <div key={i} className="bg-white p-4 rounded-2xl text-[10px] font-black uppercase text-center border shadow-sm border-slate-100 text-slate-400">{i+1}. {t}</div>)}
+                                </div>
+                                <div className="space-y-8">
+                                    {currentProject.cases && Object.keys(currentProject.cases).map(caseId => (
+                                        <div key={caseId} className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+                                            <div className="bg-slate-900 text-white p-5 italic"><h3 className="font-black text-xs uppercase tracking-widest">{currentProject.cases[caseId].name}</h3></div>
+                                            <div className="overflow-x-auto scroll-custom">
+                                                <table className="w-full text-left">
+                                                    <tbody>
+                                                        {currentProject.cases[caseId].items && Object.keys(currentProject.cases[caseId].items).map(itemId => {
+                                                            const item = currentProject.cases[caseId].items[itemId];
+                                                            return (
+                                                                <tr key={itemId} className="border-b border-slate-50 hover:bg-slate-50 transition-all">
+                                                                    <td className="p-4 sticky-col flex items-center gap-4">
+                                                                        <img src={item.img} className="w-12 h-12 rounded-xl object-cover border-2 border-slate-100 shadow-sm" />
+                                                                        <span className="font-black text-[10px] uppercase leading-tight tracking-tighter">{item.name}</span>
+                                                                    </td>
+                                                                    {[1, 2, 3, 4].map(col => (
+                                                                        <td key={col} className="p-4 border-l border-slate-50 text-center">
+                                                                            <button onClick={() => toggleCheck(caseId, itemId, col)} className={`status-btn mx-auto ${item[`c${col}`] ? `active-${col} shadow-lg shadow-slate-200` : ''}`}>
+                                                                                {item[`c${col}`] ? <i className="fas fa-check text-[10px]"></i> : col}
+                                                                            </button>
+                                                                        </td>
+                                                                    ))}
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* MODAL DỰ ÁN */}
+                    {showAddModal && (
+                        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+                            <div className="bg-white p-8 rounded-[3rem] w-full max-w-xl shadow-2xl text-slate-800 flex flex-col max-h-[90vh] animate-pop">
+                                <h3 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tighter text-center italic">Create New Shoot</h3>
+                                <div className="space-y-4 overflow-y-auto pr-2 scroll-custom">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">Project Name</label>
+                                            <input id="pname" className="w-full bg-slate-100 p-4 rounded-2xl outline-none font-bold italic" placeholder="Tên phim..." />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">Date</label>
+                                            <input id="pdate" type="date" className="w-full bg-slate-100 p-4 rounded-2xl outline-none font-bold" />
+                                        </div>
+                                    </div>
+                                    <div className="mt-6">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-3 block">Choose Cases</label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-4">
+                                            {Object.keys(inventory).map(id => (
+                                                <div key={id} onClick={() => setSelectedCaseIds(prev => prev.includes(id) ? prev.filter(i=>i!==id) : [...prev, id])} className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${selectedCaseIds.includes(id) ? 'border-red-600 bg-red-50' : 'border-slate-100 bg-slate-50'}`}>
+                                                    <span className="text-[11px] font-black uppercase truncate pr-2">{inventory[id].name}</span>
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${selectedCaseIds.includes(id) ? 'bg-red-600 border-red-600' : 'border-slate-300'}`}>
+                                                        {selectedCaseIds.includes(id) && <i className="fas fa-check text-white text-[8px]"></i>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 mt-8 pt-4 border-t">
+                                    <button onClick={handleCreateProject} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-red-600/30 uppercase text-xs">CREATE</button>
+                                    <button onClick={()=>{setShowAddModal(false); setSelectedCaseIds([])}} className="flex-1 bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-xs">CLOSE</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
